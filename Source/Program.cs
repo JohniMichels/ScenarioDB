@@ -1,5 +1,9 @@
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Schema;
 using Serilog;
 using Serilog.Events;
+using ScenarioDB;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -16,11 +20,17 @@ builder.Host.UseSerilog(
 
 builder.Services
     .AddControllers()
-    .AddNewtonsoftJson();
+    .AddNewtonsoftJson(settings => 
+    {
+        settings.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+    });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services
     .AddEndpointsApiExplorer()
-    .AddSwaggerGen();
+    .Configure<RouteOptions>(options => options.LowercaseUrls = true)
+    .AddSwaggerGen()
+    .AddSwaggerGenNewtonsoftSupport()
+    ;
 
 var app = builder.Build();
 
@@ -28,7 +38,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(opt =>
+    {
+        opt.SwaggerEndpoint("/swagger/v1/swagger.json", "ScenarioDB");
+        opt.RoutePrefix = "";
+    });
 }
 
 app.UseHttpsRedirection();
