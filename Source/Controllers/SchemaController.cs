@@ -1,4 +1,7 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Schema;
+using ScenarioDB.Repositories;
 
 namespace ScenarioDB;
 
@@ -6,25 +9,39 @@ namespace ScenarioDB;
 [Route("admin/[controller]")]
 public class SchemaController : ControllerBase
 {
-    public ILogger<SchemaController> Logger { get; private set; }
-    
-    public SchemaController(ILogger<SchemaController> logger)
+    public ILogger<SchemaController> Logger { get; }
+    public ISchemaPathRepository SchemaPathRepository { get; }
+
+    public SchemaController(
+        ILogger<SchemaController> logger,
+        ISchemaPathRepository schemaPathRepository
+    )
     {
         Logger = logger;
+        SchemaPathRepository = schemaPathRepository;
     }
 
-    [HttpGet]
-    public ActionResult<IEnumerable<SchemaPath>> Get()
+    [HttpGet()]
+    public async Task<ActionResult<IEnumerable<SchemaPath>>> Get()
     {
-        return Ok(new List<SchemaPath>() {context, context});
+        return Ok(await SchemaPathRepository.GetPathsAsync());
     }
 
-    private static SchemaPath context = new();
-
-    [HttpPost]
-    public ActionResult<SchemaPath> Post([FromBody] SchemaPath value)
+    [HttpGet("{*path}")]
+    public async Task<ActionResult<SchemaPath>> Get(string path)
     {
-        context = value;
-        return value;
+        return Ok(await SchemaPathRepository.GetSchemaAsync(WebUtility.UrlDecode(path)));
+    }
+
+    [HttpPost("{*path}")]
+    public async Task<ActionResult<SchemaPath>> Post(string path, [FromBody] JSchema value)
+    {
+        return Ok(await SchemaPathRepository.CreateAsync(new SchemaPath(WebUtility.UrlDecode(path), value)));
+    }
+
+    [HttpPut("{*path}")]
+    public async Task<ActionResult<SchemaPath>> Put(string path, [FromBody] JSchema value)
+    {
+        return Ok(await SchemaPathRepository.SetAsync(new SchemaPath(WebUtility.UrlDecode(path), value)));
     }
 }

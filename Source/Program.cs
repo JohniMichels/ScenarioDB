@@ -4,6 +4,10 @@ using Newtonsoft.Json.Schema;
 using Serilog;
 using Serilog.Events;
 using ScenarioDB;
+using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
+using ScenarioDB.Utils;
+using ScenarioDB.Repositories;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -23,12 +27,39 @@ builder.Services
     .AddNewtonsoftJson(settings => 
     {
         settings.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+        // settings.SerializerSettings.Converters.Add(new FlagEnumStringArrayConverter<JSchemaType>());
     });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services
     .AddEndpointsApiExplorer()
+    .AddSingleton<ISchemaPathRepository, MockRepository>()
     .Configure<RouteOptions>(options => options.LowercaseUrls = true)
-    .AddSwaggerGen()
+    .AddSwaggerGen(opt =>
+    {
+        // opt.SwaggerDoc("v1", new() { Title = "ScenarioDB", Version = "v1" });
+        opt.MapType<JSchemaType>(() =>
+        {
+
+            var singleItemSchema = new OpenApiSchema
+            {
+                Type = "string",
+                Enum = Enum.GetNames(typeof(JSchemaType)).Select(x => new OpenApiString(x.ToLower())).ToArray()
+            };
+            var multipleItemSchema = new OpenApiSchema
+            {
+                Type = "array",
+                Items = singleItemSchema
+            };
+            return new OpenApiSchema
+            {
+                OneOf = new List<OpenApiSchema>
+                {
+                    singleItemSchema,
+                    multipleItemSchema
+                }
+            };
+        });
+    })
     .AddSwaggerGenNewtonsoftSupport()
     ;
 
